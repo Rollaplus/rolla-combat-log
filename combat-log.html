@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Combat Log" />
+  <meta name="theme-color" content="#0a0e14" />
+  <title>Combat Log</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; background: #0a0e14; color: #E6EDF3; font-family: 'Rajdhani', sans-serif; overscroll-behavior-y: contain; }
+    body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+    #root { min-height: 100vh; }
+    button { font-family: inherit; -webkit-appearance: none; appearance: none; touch-action: manipulation; }
+    @keyframes slideDown { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    @keyframes slideUpModal { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .tracker-scroll::-webkit-scrollbar { width: 6px; }
+    .tracker-scroll::-webkit-scrollbar-track { background: transparent; }
+    .tracker-scroll::-webkit-scrollbar-thumb { background: #21262d; border-radius: 3px; }
+    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+    textarea:focus, input:focus { outline: none !important; border-color: #14E1A040 !important; }
+    .loading-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; color: #8B949E; font-family: 'Chakra Petch', sans-serif; letter-spacing: 0.2em; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="loading-screen">LOADING...</div>
+  </div>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel" data-presets="react" data-type="module">
+const { useState, useEffect, useRef } = React;
+
+// ====================== ICONS ======================
+const Icon = ({ size = 16, children, style }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', flexShrink: 0, ...(style || {}) }}>
+    {children}
+  </svg>
+);
+const Flame = (p) => <Icon {...p}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></Icon>;
+const Trophy = (p) => <Icon {...p}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></Icon>;
+const Plus = (p) => <Icon {...p}><path d="M5 12h14"/><path d="M12 5v14"/></Icon>;
+const Minus = (p) => <Icon {...p}><path d="M5 12h14"/></Icon>;
+const ChevronDown = (p) => <Icon {...p}><path d="m6 9 6 6 6-6"/></Icon>;
+const ChevronUp = (p) => <Icon {...p}><path d="m18 15-6-6-6 6"/></Icon>;
+const ChevronLeft = (p) => <Icon {...p}><path d="m15 18-6-6 6-6"/></Icon>;
+const ChevronRight = (p) => <Icon {...p}><path d="m9 18 6-6-6-6"/></Icon>;
+const Sparkles = (p) => <Icon {...p}><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></Icon>;
+const Calendar = (p) => <Icon {...p}><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></Icon>;
+const ThumbsUp = (p) => <Icon {...p}><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H7V10l4.3-9.46A.5.5 0 0 1 12 .28a2.76 2.76 0 0 1 3 2.72z"/></Icon>;
+const ThumbsDown = (p) => <Icon {...p}><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H17v12l-4.3 9.46A.5.5 0 0 1 12 23.72a2.76 2.76 0 0 1-3-2.72z"/></Icon>;
+const X = (p) => <Icon {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></Icon>;
+const Lightbulb = (p) => <Icon {...p}><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></Icon>;
+const Tag = (p) => <Icon {...p}><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/></Icon>;
+const BookOpen = (p) => <Icon {...p}><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></Icon>;
+
+// ====================== CONFIG ======================
+const STORAGE_KEY = 'rolla-tracker-v4';
+
+const CATEGORIES = {
+  aim: {
+    label: 'AIM TRAINING',
+    subtitle: 'mechanical foundation',
+    accent: '#14E1A0',
+    accentDim: 'rgba(20, 225, 160, 0.12)',
+    hsGroup: null,
+    ratingGroup: 'aim',
+    items: [
+      { key: 'aimlabs', label: 'Aimlabs', hint: '15 min minimum', min: 3, stretch: 5, prompt: 'rating' },
+    ]
+  },
+  practice: {
+    label: 'IN-GAME PRACTICE',
+    subtitle: 'reps + unwind',
+    accent: '#FFB86C',
+    accentDim: 'rgba(255, 184, 108, 0.12)',
+    hsGroup: 'practice',
+    ratingGroup: null,
+    items: [
+      { key: 'dm', label: 'Deathmatch', min: 5, stretch: 8, prompt: null },
+      { key: 'tdm', label: 'TDM', min: 3, stretch: 5, prompt: 'hs' },
+      { key: 'knockout', label: 'Knockout', min: 2, stretch: 4, prompt: 'hs' },
+    ]
+  },
+  game: {
+    label: 'GAME TIME',
+    subtitle: 'the real thing',
+    accent: '#FF4655',
+    accentDim: 'rgba(255, 70, 85, 0.12)',
+    hsGroup: 'game',
+    ratingGroup: null,
+    items: [
+      { key: 'swift', label: 'Swiftplay', min: 4, stretch: 6, prompt: 'hs' },
+      { key: 'comp', label: 'Competitive', min: 2, stretch: 3, prompt: 'hs' },
+    ]
+  },
+};
+
+const ALL_ITEMS = Object.values(CATEGORIES).flatMap(c => c.items);
+const ITEM_LABELS = ALL_ITEMS.reduce((acc, i) => ({ ...acc, [i.key]: i.label }), {});
+const PRACTICE_KEYS = ['dm', 'tdm', 'knockout'];
+const GAME_KEYS = ['swift', 'comp'];
+
+// ====================== DATE HELPERS ======================
+function getMondayOfWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  return toDateString(monday);
+}
+function toDateString(d) { return d.toISOString().split('T')[0]; }
+function getTodayDateString() { const d = new Date(); d.setHours(0,0,0,0); return toDateString(d); }
+function addDays(dateStr, days) { const d = new Date(dateStr); d.setDate(d.getDate() + days); return toDateString(d); }
+function daysBetween(a, b) { return Math.floor(Math.abs(new Date(b) - new Date(a)) / 86400000); }
+function daysInWeek(start) { return Array.from({ length: 7 }, (_, i) => addDays(start, i)); }
+
+function formatDayLabel(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const day = d.toLocaleString('en', { weekday: 'short' }).toUpperCase();
+  const month = d.toLocaleString('en', { month: 'short' }).toUpperCase();
+  return `${day} · ${month} ${d.getDate()}`;
+}
+function formatShortDay(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleString('en', { weekday: 'narrow' });
+}
+function formatWeekLabel(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  return `WK OF ${d.toLocaleString('en', { month: 'short' }).toUpperCase()} ${d.getDate()}`;
+}
+
+// ====================== STATE HELPERS ======================
+function emptyCounts() { return ALL_ITEMS.reduce((a, i) => ({ ...a, [i.key]: 0 }), {}); }
+function emptyDayLog() { return { counts: emptyCounts(), practiceHS: [], gameHS: [], aimRatings: [] }; }
+function getDayLog(dailyLogs, dateStr) { return dailyLogs[dateStr] || emptyDayLog(); }
+
+function computeWeeklyTotals(dailyLogs, weekStart) {
+  const days = daysInWeek(weekStart);
+  const counts = emptyCounts();
+  let practiceHS = [], gameHS = [], aimRatings = [];
+  days.forEach(d => {
+    const log = dailyLogs[d];
+    if (!log) return;
+    ALL_ITEMS.forEach(item => { counts[item.key] += (log.counts[item.key] || 0); });
+    practiceHS = practiceHS.concat(log.practiceHS || []);
+    gameHS = gameHS.concat(log.gameHS || []);
+    aimRatings = aimRatings.concat(log.aimRatings || []);
+  });
+  return { counts, practiceHS, gameHS, aimRatings };
+}
+
+function hitAllMinimums(counts) { return ALL_ITEMS.every(i => (counts[i.key] || 0) >= i.min); }
+function hitAllStretch(counts) { return ALL_ITEMS.every(i => (counts[i.key] || 0) >= i.stretch); }
+
+function totalProgress(counts) {
+  const totalMin = ALL_ITEMS.reduce((s, i) => s + i.min, 0);
+  const current = ALL_ITEMS.reduce((s, i) => s + Math.min(counts[i.key] || 0, i.min), 0);
+  return Math.round((current / totalMin) * 100);
+}
+
+function avg(arr) { return arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null; }
+
+function dayHasActivity(dayLog) {
+  if (!dayLog) return false;
+  return ALL_ITEMS.some(item => (dayLog.counts[item.key] || 0) > 0);
+}
+
+function getAllActivityDates(state) {
+  const dates = new Set();
+  Object.entries(state.currentWeek.dailyLogs).forEach(([date, log]) => {
+    if (dayHasActivity(log)) dates.add(date);
+  });
+  state.history.forEach(week => {
+    Object.entries(week.dailyLogs || {}).forEach(([date, log]) => {
+      if (dayHasActivity(log)) dates.add(date);
+    });
+  });
+  return dates;
+}
+
+function computeDayStreak(activityDates) {
+  const today = getTodayDateString();
+  const yesterday = addDays(today, -1);
+  if (!activityDates.has(today) && !activityDates.has(yesterday)) return 0;
+  let cursor = activityDates.has(today) ? today : yesterday;
+  let streak = 0;
+  while (activityDates.has(cursor)) { streak++; cursor = addDays(cursor, -1); }
+  return streak;
+}
+
+function computeLongestDayStreak(activityDates) {
+  if (activityDates.size === 0) return 0;
+  const sorted = [...activityDates].sort();
+  let longest = 1, current = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    if (daysBetween(sorted[i - 1], sorted[i]) === 1) { current++; longest = Math.max(longest, current); }
+    else current = 1;
+  }
+  return longest;
+}
+
+const defaultState = () => ({
+  currentWeek: { startDate: getMondayOfWeek(new Date()), dailyLogs: {}, journal: '', tags: [] },
+  history: [],
+  streaks: { longestDayStreak: 0, currentWeekStreak: 0, longestWeekStreak: 0, totalSessionsLogged: 0 }
+});
+
+function handleWeekRollover(s) {
+  const currentMonday = getMondayOfWeek(new Date());
+  if (s.currentWeek.startDate === currentMonday) return s;
+  const weekly = computeWeeklyTotals(s.currentWeek.dailyLogs, s.currentWeek.startDate);
+  const archived = {
+    weekStart: s.currentWeek.startDate,
+    dailyLogs: s.currentWeek.dailyLogs,
+    journal: s.currentWeek.journal,
+    tags: s.currentWeek.tags,
+    hitMinimum: hitAllMinimums(weekly.counts),
+    hitStretch: hitAllStretch(weekly.counts),
+  };
+  let newWeekStreak = s.streaks.currentWeekStreak;
+  if (archived.hitMinimum) newWeekStreak += 1; else newWeekStreak = 0;
+  return {
+    currentWeek: { startDate: currentMonday, dailyLogs: {}, journal: '', tags: [] },
+    history: [archived, ...s.history].slice(0, 52),
+    streaks: { ...s.streaks, currentWeekStreak: newWeekStreak, longestWeekStreak: Math.max(s.streaks.longestWeekStreak, newWeekStreak) }
+  };
+}
+
+// ====================== MAIN COMPONENT ======================
+function RollaTracker() {
+  const [state, setState] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedDay, setSelectedDay] = useState(getTodayDateString());
+  const [expandedHistory, setExpandedHistory] = useState(false);
+  const [celebration, setCelebration] = useState(null);
+  const [pendingPrompt, setPendingPrompt] = useState(null);
+  const [hsInput, setHsInput] = useState('');
+  const [newTagInput, setNewTagInput] = useState('');
+  const [showTagInput, setShowTagInput] = useState(false);
+  const [showDataMenu, setShowDataMenu] = useState(false);
+  const previousMinHitRef = useRef(false);
+
+  // Load from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const rolled = handleWeekRollover(parsed);
+        setState(rolled);
+        if (rolled !== parsed) localStorage.setItem(STORAGE_KEY, JSON.stringify(rolled));
+        const weekly = computeWeeklyTotals(rolled.currentWeek.dailyLogs, rolled.currentWeek.startDate);
+        previousMinHitRef.current = hitAllMinimums(weekly.counts);
+      } else {
+        setState(defaultState());
+      }
+    } catch (e) {
+      console.error('load error', e);
+      setState(defaultState());
+    }
+    setLoading(false);
+  }, []);
+
+  // Save to localStorage
+  useEffect(() => {
+    if (!state || loading) return;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch (e) { console.error('save failed', e); }
+  }, [state, loading]);
+
+  function increment(itemKey, delta = 1) {
+    setState(prev => {
+      const targetDay = selectedDay;
+      const currentDayLog = getDayLog(prev.currentWeek.dailyLogs, targetDay);
+      const currentCount = currentDayLog.counts[itemKey] || 0;
+      const newCount = Math.max(0, currentCount + delta);
+      if (delta < 0 && currentCount === 0) return prev;
+
+      const newDayLog = {
+        counts: { ...currentDayLog.counts, [itemKey]: newCount },
+        practiceHS: [...currentDayLog.practiceHS],
+        gameHS: [...currentDayLog.gameHS],
+        aimRatings: [...currentDayLog.aimRatings],
+      };
+
+      if (delta < 0) {
+        if (PRACTICE_KEYS.includes(itemKey)) {
+          const idx = [...newDayLog.practiceHS].reverse().findIndex(e => e.mode === itemKey);
+          if (idx >= 0) newDayLog.practiceHS.splice(newDayLog.practiceHS.length - 1 - idx, 1);
+        } else if (GAME_KEYS.includes(itemKey)) {
+          const idx = [...newDayLog.gameHS].reverse().findIndex(e => e.mode === itemKey);
+          if (idx >= 0) newDayLog.gameHS.splice(newDayLog.gameHS.length - 1 - idx, 1);
+        } else if (itemKey === 'aimlabs') {
+          if (newDayLog.aimRatings.length > 0) newDayLog.aimRatings.pop();
+        }
+      }
+
+      const newDailyLogs = { ...prev.currentWeek.dailyLogs, [targetDay]: newDayLog };
+      const weekly = computeWeeklyTotals(newDailyLogs, prev.currentWeek.startDate);
+
+      let newStreaks = { ...prev.streaks };
+      if (delta > 0) newStreaks.totalSessionsLogged += 1;
+
+      const tempState = { ...prev, currentWeek: { ...prev.currentWeek, dailyLogs: newDailyLogs } };
+      const activityDates = getAllActivityDates(tempState);
+      const longest = computeLongestDayStreak(activityDates);
+      newStreaks.longestDayStreak = Math.max(newStreaks.longestDayStreak, longest);
+
+      const nowHit = hitAllMinimums(weekly.counts);
+      if (nowHit && !previousMinHitRef.current && delta > 0) {
+        setCelebration('MINIMUMS CLEARED — WEEK LOCKED IN');
+        setTimeout(() => setCelebration(null), 4000);
+      }
+      const prevWeekly = computeWeeklyTotals(prev.currentWeek.dailyLogs, prev.currentWeek.startDate);
+      const nowStretch = hitAllStretch(weekly.counts);
+      if (nowStretch && !hitAllStretch(prevWeekly.counts) && delta > 0) {
+        setCelebration('ALL STRETCH GOALS HIT — ABSOLUTE UNIT');
+        setTimeout(() => setCelebration(null), 4000);
+      }
+      previousMinHitRef.current = nowHit;
+
+      if (delta > 0) {
+        const item = ALL_ITEMS.find(i => i.key === itemKey);
+        if (item?.prompt) {
+          setPendingPrompt({ itemKey, type: item.prompt, day: targetDay });
+          setHsInput('');
+        }
+      }
+
+      return { ...prev, currentWeek: { ...prev.currentWeek, dailyLogs: newDailyLogs }, streaks: newStreaks };
+    });
+  }
+
+  function submitHS() {
+    const val = parseFloat(hsInput);
+    if (isNaN(val) || val < 0 || val > 100 || !pendingPrompt) return;
+    const { itemKey, day } = pendingPrompt;
+    const entry = { value: val, mode: itemKey, date: new Date().toISOString() };
+    setState(prev => {
+      const dayLog = getDayLog(prev.currentWeek.dailyLogs, day);
+      const newDayLog = { ...dayLog };
+      if (PRACTICE_KEYS.includes(itemKey)) newDayLog.practiceHS = [...dayLog.practiceHS, entry];
+      else if (GAME_KEYS.includes(itemKey)) newDayLog.gameHS = [...dayLog.gameHS, entry];
+      return { ...prev, currentWeek: { ...prev.currentWeek, dailyLogs: { ...prev.currentWeek.dailyLogs, [day]: newDayLog } } };
+    });
+    setPendingPrompt(null);
+    setHsInput('');
+  }
+
+  function submitRating(rating) {
+    if (!pendingPrompt) return;
+    const { day } = pendingPrompt;
+    const entry = { rating, date: new Date().toISOString() };
+    setState(prev => {
+      const dayLog = getDayLog(prev.currentWeek.dailyLogs, day);
+      const newDayLog = { ...dayLog, aimRatings: [...dayLog.aimRatings, entry] };
+      return { ...prev, currentWeek: { ...prev.currentWeek, dailyLogs: { ...prev.currentWeek.dailyLogs, [day]: newDayLog } } };
+    });
+    setPendingPrompt(null);
+  }
+
+  function skipPrompt() { setPendingPrompt(null); setHsInput(''); }
+  function updateJournal(text) { setState(prev => ({ ...prev, currentWeek: { ...prev.currentWeek, journal: text } })); }
+
+  function addTag(tag) {
+    const trimmed = tag.trim();
+    if (!trimmed) return;
+    setState(prev => {
+      if (prev.currentWeek.tags.includes(trimmed)) return prev;
+      return { ...prev, currentWeek: { ...prev.currentWeek, tags: [...prev.currentWeek.tags, trimmed] } };
+    });
+    setNewTagInput('');
+    setShowTagInput(false);
+  }
+
+  function removeTag(tag) {
+    setState(prev => ({ ...prev, currentWeek: { ...prev.currentWeek, tags: prev.currentWeek.tags.filter(t => t !== tag) } }));
+  }
+
+  function exportData() {
+    const dataStr = JSON.stringify(state, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `combat-log-backup-${getTodayDateString()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setShowDataMenu(false);
+  }
+
+  function importData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const imported = JSON.parse(evt.target.result);
+        if (!imported.currentWeek || !imported.streaks) throw new Error('Invalid backup file');
+        if (confirm('This will replace all current data. Continue?')) {
+          const rolled = handleWeekRollover(imported);
+          setState(rolled);
+          setShowDataMenu(false);
+          alert('Data imported successfully.');
+        }
+      } catch (err) {
+        alert('Could not import: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  if (loading || !state) return <div className="loading-screen">LOADING...</div>;
+
+  const today = getTodayDateString();
+  const weekStart = state.currentWeek.startDate;
+  const weeklyTotals = computeWeeklyTotals(state.currentWeek.dailyLogs, weekStart);
+  const selectedDayLog = getDayLog(state.currentWeek.dailyLogs, selectedDay);
+  const progress = totalProgress(weeklyTotals.counts);
+  const minHit = hitAllMinimums(weeklyTotals.counts);
+  const stretchHit = hitAllStretch(weeklyTotals.counts);
+  const weekLabel = formatWeekLabel(weekStart);
+  const practiceHSAvg = avg(weeklyTotals.practiceHS.map(e => e.value));
+  const gameHSAvg = avg(weeklyTotals.gameHS.map(e => e.value));
+  const thumbsUp = weeklyTotals.aimRatings.filter(r => r.rating === 'up').length;
+  const thumbsDown = weeklyTotals.aimRatings.filter(r => r.rating === 'down').length;
+  const activityDates = getAllActivityDates(state);
+  const currentDayStreak = computeDayStreak(activityDates);
+  const insights = computeInsights(state);
+  const weekDays = daysInWeek(weekStart);
+  const selectedIsToday = selectedDay === today;
+  const canGoBack = selectedDay > weekStart;
+  const canGoForward = selectedDay < today && selectedDay < weekDays[6];
+
+  return (
+    <div style={styles.container} className="tracker-scroll">
+      <div style={styles.scanlines} />
+
+      {celebration && (
+        <div style={styles.celebration}>
+          <Sparkles size={18} style={{ marginRight: 8 }} />
+          {celebration}
+        </div>
+      )}
+
+      {pendingPrompt && (
+        <PromptModal prompt={pendingPrompt} hsInput={hsInput} setHsInput={setHsInput}
+          onSubmitHS={submitHS} onSubmitRating={submitRating} onSkip={skipPrompt} />
+      )}
+
+      <div style={styles.header}>
+        <div style={styles.titleRow}>
+          <div>
+            <div style={styles.title}>COMBAT LOG</div>
+            <div style={styles.subtitle}>RollaPlus / weekly protocol</div>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <div style={styles.weekBadge}>
+              <Calendar size={12} style={{ marginRight: 6, opacity: 0.6 }} />
+              {weekLabel}
+            </div>
+            <button onClick={() => setShowDataMenu(!showDataMenu)} style={styles.menuButton}>⋯</button>
+          </div>
+        </div>
+        {showDataMenu && (
+          <div style={styles.dataMenu}>
+            <button onClick={exportData} style={styles.dataMenuItem}>EXPORT BACKUP</button>
+            <label style={{ ...styles.dataMenuItem, cursor: 'pointer' }}>
+              IMPORT BACKUP
+              <input type="file" accept=".json" onChange={importData} style={{ display: 'none' }} />
+            </label>
+          </div>
+        )}
+      </div>
+
+      <DaySelector selectedDay={selectedDay} setSelectedDay={setSelectedDay}
+        weekDays={weekDays} today={today} dailyLogs={state.currentWeek.dailyLogs}
+        canGoBack={canGoBack} canGoForward={canGoForward} selectedIsToday={selectedIsToday} />
+
+      <div style={styles.streakGrid}>
+        <StreakCard icon={<Flame size={18} />} value={currentDayStreak} label="DAY STREAK" best={state.streaks.longestDayStreak} accent="#FFB86C" />
+        <StreakCard icon={<Trophy size={18} />} value={state.streaks.currentWeekStreak} label="WEEK STREAK" best={state.streaks.longestWeekStreak} accent="#14E1A0" />
+      </div>
+
+      <div style={styles.progressCard}>
+        <div style={styles.progressHeader}>
+          <div>
+            <div style={styles.progressLabel}>WEEKLY MINIMUMS</div>
+            <div style={{ ...styles.progressValue, color: minHit ? '#14E1A0' : '#E6EDF3' }}>
+              {progress}<span style={{ fontSize: 20, opacity: 0.5 }}>%</span>
+            </div>
+          </div>
+          <div style={styles.progressStatus}>
+            {stretchHit ? <span style={{ color: '#14E1A0' }}>● STRETCH CLEARED</span>
+              : minHit ? <span style={{ color: '#14E1A0' }}>● LOCKED IN</span>
+              : <span style={{ color: '#8B949E' }}>○ IN PROGRESS</span>}
+          </div>
+        </div>
+        <div style={styles.progressBar}>
+          <div style={{ ...styles.progressFill, width: `${progress}%`, background: minHit ? '#14E1A0' : 'linear-gradient(90deg, #FF4655 0%, #FFB86C 50%, #14E1A0 100%)' }} />
+        </div>
+      </div>
+
+      {Object.entries(CATEGORIES).map(([catKey, cat]) => (
+        <CategoryBlock key={catKey} category={cat} weeklyCounts={weeklyTotals.counts}
+          dayCounts={selectedDayLog.counts} selectedIsToday={selectedIsToday} selectedDay={selectedDay}
+          onIncrement={increment}
+          headerStat={
+            cat.hsGroup === 'practice' ? formatHSStat(practiceHSAvg, weeklyTotals.practiceHS.length)
+              : cat.hsGroup === 'game' ? formatHSStat(gameHSAvg, weeklyTotals.gameHS.length)
+              : cat.ratingGroup === 'aim' ? { up: thumbsUp, down: thumbsDown } : null
+          }
+          statType={cat.hsGroup ? 'hs' : cat.ratingGroup ? 'rating' : null} />
+      ))}
+
+      {insights && <InsightsBlock insights={insights} />}
+
+      <ContextBlock tags={state.currentWeek.tags} newTagInput={newTagInput}
+        setNewTagInput={setNewTagInput} showTagInput={showTagInput}
+        setShowTagInput={setShowTagInput} onAddTag={addTag} onRemoveTag={removeTag} />
+
+      <JournalBlock journal={state.currentWeek.journal} onChange={updateJournal} />
+
+      <div style={styles.historyCard}>
+        <button onClick={() => setExpandedHistory(!expandedHistory)} style={styles.historyToggle}>
+          <span>HISTORY / {state.history.length} WEEK{state.history.length !== 1 ? 'S' : ''}</span>
+          {expandedHistory ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+        {expandedHistory && (
+          <div style={styles.historyList}>
+            {state.history.length === 0 ? (
+              <div style={{ color: '#484F58', fontSize: 13, padding: '12px 0' }}>first week in progress — history starts next Monday</div>
+            ) : state.history.map((week, i) => <HistoryItem key={i} week={week} />)}
+          </div>
+        )}
+      </div>
+
+      <div style={styles.footer}>TOTAL SESSIONS LOGGED / {state.streaks.totalSessionsLogged}</div>
+    </div>
+  );
+}
+
+function DaySelector({ selectedDay, setSelectedDay, weekDays, today, dailyLogs, canGoBack, canGoForward, selectedIsToday }) {
+  function navigate(dir) {
+    const newDay = addDays(selectedDay, dir);
+    if (dir > 0 && (newDay > today || newDay > weekDays[6])) return;
+    if (dir < 0 && newDay < weekDays[0]) return;
+    setSelectedDay(newDay);
+  }
+  return (
+    <div style={styles.daySelector}>
+      <div style={styles.dayNav}>
+        <button onClick={() => navigate(-1)} disabled={!canGoBack}
+          style={{ ...styles.dayArrow, opacity: canGoBack ? 1 : 0.3, cursor: canGoBack ? 'pointer' : 'not-allowed' }}>
+          <ChevronLeft size={20} />
+        </button>
+        <div style={styles.dayLabel}>
+          <div style={styles.dayLabelMain}>{formatDayLabel(selectedDay)}</div>
+          {selectedIsToday && <div style={styles.todayBadge}>● TODAY</div>}
+          {!selectedIsToday && <div style={styles.pastBadge}>backtrack mode</div>}
+        </div>
+        <button onClick={() => navigate(1)} disabled={!canGoForward}
+          style={{ ...styles.dayArrow, opacity: canGoForward ? 1 : 0.3, cursor: canGoForward ? 'pointer' : 'not-allowed' }}>
+          <ChevronRight size={20} />
+        </button>
+      </div>
+      <div style={styles.dayDots}>
+        {weekDays.map(day => {
+          const isFuture = day > today;
+          const isSelected = day === selectedDay;
+          const hasActivity = dayHasActivity(dailyLogs[day]);
+          const isToday = day === today;
+          return (
+            <button key={day} onClick={() => !isFuture && setSelectedDay(day)} disabled={isFuture}
+              style={{ ...styles.dayDot,
+                background: isSelected ? '#14E1A0' : isToday && !isSelected ? '#1a2330' : 'transparent',
+                borderColor: isSelected ? '#14E1A0' : isToday ? '#14E1A040' : '#21262d',
+                color: isSelected ? '#0a0e14' : isFuture ? '#2d333b' : hasActivity ? '#E6EDF3' : '#6E7681',
+                cursor: isFuture ? 'not-allowed' : 'pointer',
+                fontWeight: isSelected || isToday ? 700 : 500 }}>
+              <span style={{ fontSize: 10, letterSpacing: '0.1em' }}>{formatShortDay(day)}</span>
+              {hasActivity && !isSelected && <span style={{ width: 3, height: 3, background: '#14E1A0', borderRadius: '50%', display: 'block', marginTop: 3 }} />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PromptModal({ prompt, hsInput, setHsInput, onSubmitHS, onSubmitRating, onSkip }) {
+  const itemLabel = ITEM_LABELS[prompt.itemKey];
+  const isToday = prompt.day === getTodayDateString();
+  return (
+    <>
+      <div style={styles.modalBackdrop} onClick={onSkip} />
+      <div style={styles.modal}>
+        <div style={styles.modalHeader}>
+          <div>
+            <div style={styles.modalPrefix}>LOGGED · {isToday ? 'TODAY' : formatDayLabel(prompt.day).split(' · ')[0]}</div>
+            <div style={styles.modalTitle}>{itemLabel}</div>
+          </div>
+          <button onClick={onSkip} style={styles.modalClose}><X size={18} /></button>
+        </div>
+        {prompt.type === 'hs' ? (
+          <>
+            <div style={styles.modalQuestion}>Headshot %?</div>
+            <div style={styles.hsInputRow}>
+              <input type="number" inputMode="decimal" value={hsInput} onChange={e => setHsInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && onSubmitHS()} placeholder="0" style={styles.hsInput}
+                autoFocus min="0" max="100" step="0.1" />
+              <span style={styles.hsSuffix}>%</span>
+            </div>
+            <div style={styles.modalButtons}>
+              <button onClick={onSkip} style={styles.skipButton}>SKIP</button>
+              <button onClick={onSubmitHS} style={styles.submitButton}>LOG HS%</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={styles.modalQuestion}>How did that feel?</div>
+            <div style={styles.ratingButtons}>
+              <button onClick={() => onSubmitRating('up')} style={styles.ratingUpButton}>
+                <ThumbsUp size={24} /><span>GOOD</span>
+              </button>
+              <button onClick={() => onSubmitRating('down')} style={styles.ratingDownButton}>
+                <ThumbsDown size={24} /><span>OFF</span>
+              </button>
+            </div>
+            <button onClick={onSkip} style={styles.skipButtonFull}>SKIP</button>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+function formatHSStat(average, count) { return average === null ? null : { avg: average.toFixed(1), count }; }
+
+function StreakCard({ icon, value, label, best, accent }) {
+  const active = value > 0;
+  return (
+    <div style={{ ...styles.streakCard, borderColor: active ? accent : '#21262d', background: active ? `${accent}0a` : '#0f1419' }}>
+      <div style={{ color: active ? accent : '#484F58', display: 'flex', alignItems: 'center', gap: 8 }}>
+        {icon}
+        <span style={{ fontSize: 11, letterSpacing: '0.15em', fontFamily: 'Chakra Petch', fontWeight: 600 }}>{label}</span>
+      </div>
+      <div style={{ fontSize: 40, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: active ? '#E6EDF3' : '#484F58', lineHeight: 1, marginTop: 8 }}>{value}</div>
+      <div style={{ fontSize: 10, color: '#6E7681', marginTop: 6, fontFamily: 'JetBrains Mono, monospace' }}>BEST / {best}</div>
+    </div>
+  );
+}
+
+function CategoryBlock({ category, weeklyCounts, dayCounts, selectedIsToday, selectedDay, onIncrement, headerStat, statType }) {
+  return (
+    <div style={{ ...styles.categoryCard, borderLeftColor: category.accent }}>
+      <div style={styles.categoryHeader}>
+        <div>
+          <div style={{ ...styles.categoryLabel, color: category.accent }}>{category.label}</div>
+          <div style={styles.categorySub}>{category.subtitle}</div>
+        </div>
+        {headerStat && statType === 'hs' && (
+          <div style={styles.catStat}>
+            <div style={styles.catStatLabel}>AVG HS%</div>
+            <div style={{ ...styles.catStatValue, color: category.accent }}>
+              {headerStat.avg}<span style={{ fontSize: 11, opacity: 0.5 }}>%</span>
+            </div>
+            <div style={styles.catStatMeta}>n={headerStat.count}</div>
+          </div>
+        )}
+        {headerStat && statType === 'rating' && (
+          <div style={styles.catStat}>
+            <div style={styles.catStatLabel}>AIM FEEL</div>
+            <div style={styles.ratingTally}>
+              <span style={{ color: '#14E1A0' }}><ThumbsUp size={13} style={{ verticalAlign: 'middle', marginRight: 3 }} />{headerStat.up}</span>
+              <span style={{ color: '#484F58', margin: '0 6px' }}>/</span>
+              <span style={{ color: '#FF4655' }}><ThumbsDown size={13} style={{ verticalAlign: 'middle', marginRight: 3 }} />{headerStat.down}</span>
+            </div>
+          </div>
+        )}
+      </div>
+      {category.items.map(item => (
+        <ItemRow key={item.key} item={item} weeklyCount={weeklyCounts[item.key] || 0}
+          dayCount={dayCounts[item.key] || 0} selectedIsToday={selectedIsToday}
+          selectedDay={selectedDay} accent={category.accent} accentDim={category.accentDim}
+          onIncrement={(delta) => onIncrement(item.key, delta)} />
+      ))}
+    </div>
+  );
+}
+
+function ItemRow({ item, weeklyCount, dayCount, selectedIsToday, selectedDay, accent, accentDim, onIncrement }) {
+  const hitMin = weeklyCount >= item.min;
+  const hitStretch = weeklyCount >= item.stretch;
+  const minProgress = Math.min(100, (weeklyCount / item.min) * 100);
+  const stretchProgress = Math.min(100, Math.max(0, ((weeklyCount - item.min) / (item.stretch - item.min)) * 100));
+  const dayShort = selectedIsToday ? 'TODAY' : formatDayLabel(selectedDay).split(' · ')[0];
+  return (
+    <div style={styles.itemRow}>
+      <div style={styles.itemTop}>
+        <div>
+          <div style={styles.itemLabel}>
+            {item.label}
+            {hitMin && <span style={{ color: accent, marginLeft: 8, fontSize: 10 }}>●</span>}
+          </div>
+          {item.hint && <div style={styles.itemHint}>{item.hint}</div>}
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={styles.itemCounter}>
+            <span style={{ color: hitStretch ? accent : '#E6EDF3', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 18 }}>{weeklyCount}</span>
+            <span style={{ color: '#484F58', fontFamily: 'JetBrains Mono, monospace', fontSize: 12, margin: '0 6px' }}>/</span>
+            <span style={{ color: '#8B949E', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
+              {item.min}<span style={{ opacity: 0.5 }}>→{item.stretch}</span>
+            </span>
+          </div>
+          {dayCount > 0 && <div style={styles.itemDayMarker}>+{dayCount} {dayShort}</div>}
+        </div>
+      </div>
+      <div style={styles.itemBarContainer}>
+        <div style={{ ...styles.itemBar, width: `${minProgress}%`, background: accent, opacity: hitMin ? 1 : 0.8 }} />
+        {hitMin && <div style={{ ...styles.itemBarStretch, width: `${stretchProgress}%`, background: accent }} />}
+        <div style={{ ...styles.itemBarMarker, left: `${(item.min / item.stretch) * 100}%` }} />
+      </div>
+      <div style={styles.itemControls}>
+        <button onClick={() => onIncrement(-1)}
+          style={{ ...styles.controlButton, ...styles.minusButton, opacity: dayCount === 0 ? 0.3 : 1 }} disabled={dayCount === 0}>
+          <Minus size={14} />
+        </button>
+        <button onClick={() => onIncrement(1)}
+          style={{ ...styles.controlButton, ...styles.plusButton, background: accentDim, color: accent, borderColor: `${accent}40` }}>
+          <Plus size={16} />
+          <span style={{ marginLeft: 6, fontFamily: 'Chakra Petch', fontWeight: 600, fontSize: 12, letterSpacing: '0.1em' }}>LOG</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ContextBlock({ tags, newTagInput, setNewTagInput, showTagInput, setShowTagInput, onAddTag, onRemoveTag }) {
+  return (
+    <div style={{ ...styles.categoryCard, borderLeftColor: '#8B949E' }}>
+      <div style={styles.categoryHeader}>
+        <div>
+          <div style={{ ...styles.categoryLabel, color: '#E6EDF3', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Tag size={12} />WEEK CONTEXT
+          </div>
+          <div style={styles.categorySub}>gear, playstyle, life — what makes this week distinct</div>
+        </div>
+      </div>
+      <div style={styles.tagList}>
+        {tags.length === 0 && !showTagInput && (
+          <div style={{ color: '#484F58', fontSize: 12, padding: '4px 0' }}>nothing logged — tap + to add context</div>
+        )}
+        {tags.map((tag, i) => (
+          <div key={i} style={styles.tag}>
+            <span>{tag}</span>
+            <button onClick={() => onRemoveTag(tag)} style={styles.tagRemove}><X size={11} /></button>
+          </div>
+        ))}
+        {showTagInput ? (
+          <div style={styles.tagInputWrapper}>
+            <input type="text" value={newTagInput} onChange={e => setNewTagInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') onAddTag(newTagInput);
+                if (e.key === 'Escape') { setShowTagInput(false); setNewTagInput(''); }
+              }}
+              placeholder="e.g. new desk setup" style={styles.tagInput} autoFocus maxLength={60} />
+            <button onClick={() => onAddTag(newTagInput)} style={styles.tagAddConfirm}>ADD</button>
+          </div>
+        ) : (
+          <button onClick={() => setShowTagInput(true)} style={styles.addTagButton}>
+            <Plus size={12} style={{ marginRight: 4 }} />ADD
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function JournalBlock({ journal, onChange }) {
+  return (
+    <div style={{ ...styles.categoryCard, borderLeftColor: '#8B949E' }}>
+      <div style={styles.categoryHeader}>
+        <div>
+          <div style={{ ...styles.categoryLabel, color: '#E6EDF3', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <BookOpen size={12} />JOURNAL
+          </div>
+          <div style={styles.categorySub}>how did the week feel? what stood out?</div>
+        </div>
+      </div>
+      <textarea value={journal} onChange={e => onChange(e.target.value)}
+        placeholder="Ups, downs, what you're figuring out, what's bugging you, what clicked..."
+        style={styles.journalTextarea} rows={5} maxLength={4000} />
+      <div style={styles.journalCount}>{journal.length} / 4000</div>
+    </div>
+  );
+}
+
+function computeInsights(state) {
+  const allDayLogs = [];
+  Object.values(state.currentWeek.dailyLogs || {}).forEach(log => allDayLogs.push(log));
+  state.history.forEach(week => { Object.values(week.dailyLogs || {}).forEach(log => allDayLogs.push(log)); });
+  const ratings = allDayLogs.flatMap(l => l.aimRatings || []);
+  const practiceHS = allDayLogs.flatMap(l => l.practiceHS || []);
+  const gameHS = allDayLogs.flatMap(l => l.gameHS || []);
+  if (ratings.length < 2) return null;
+  const goodDays = new Set(ratings.filter(r => r.rating === 'up').map(r => r.date.split('T')[0]));
+  const offDays = new Set(ratings.filter(r => r.rating === 'down').map(r => r.date.split('T')[0]));
+  const goodPracticeHS = practiceHS.filter(e => goodDays.has(e.date.split('T')[0])).map(e => e.value);
+  const offPracticeHS = practiceHS.filter(e => offDays.has(e.date.split('T')[0])).map(e => e.value);
+  const goodGameHS = gameHS.filter(e => goodDays.has(e.date.split('T')[0])).map(e => e.value);
+  const offGameHS = gameHS.filter(e => offDays.has(e.date.split('T')[0])).map(e => e.value);
+  if ((goodPracticeHS.length + goodGameHS.length + offPracticeHS.length + offGameHS.length) === 0) return null;
+  return {
+    good: { practiceAvg: avg(goodPracticeHS), gameAvg: avg(goodGameHS), practiceN: goodPracticeHS.length, gameN: goodGameHS.length },
+    off: { practiceAvg: avg(offPracticeHS), gameAvg: avg(offGameHS), practiceN: offPracticeHS.length, gameN: offGameHS.length }
+  };
+}
+
+function InsightsBlock({ insights }) {
+  const fmt = (val, n) => {
+    if (val === null || n === 0) return <span style={{ color: '#484F58' }}>—</span>;
+    return <span>{val.toFixed(1)}<span style={{ fontSize: 10, opacity: 0.5 }}>%</span></span>;
+  };
+  return (
+    <div style={styles.insightsCard}>
+      <div style={styles.insightsHeader}>
+        <Lightbulb size={14} style={{ color: '#FFB86C' }} />
+        <span style={styles.insightsTitle}>AIM FEEL × PERFORMANCE</span>
+      </div>
+      <div style={styles.insightsSub}>correlating aimlabs rating with in-game HS%</div>
+      <div style={styles.insightsGrid}>
+        <div style={styles.insightsCol}>
+          <div style={{ ...styles.insightsRowLabel, color: '#14E1A0' }}>
+            <ThumbsUp size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} />GOOD DAYS
+          </div>
+          <div style={styles.insightsStatRow}><span style={styles.insightsStatLabel}>Practice</span><span style={styles.insightsStatValue}>{fmt(insights.good.practiceAvg, insights.good.practiceN)}</span></div>
+          <div style={styles.insightsStatRow}><span style={styles.insightsStatLabel}>Games</span><span style={styles.insightsStatValue}>{fmt(insights.good.gameAvg, insights.good.gameN)}</span></div>
+        </div>
+        <div style={styles.insightsDivider} />
+        <div style={styles.insightsCol}>
+          <div style={{ ...styles.insightsRowLabel, color: '#FF4655' }}>
+            <ThumbsDown size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} />OFF DAYS
+          </div>
+          <div style={styles.insightsStatRow}><span style={styles.insightsStatLabel}>Practice</span><span style={styles.insightsStatValue}>{fmt(insights.off.practiceAvg, insights.off.practiceN)}</span></div>
+          <div style={styles.insightsStatRow}><span style={styles.insightsStatLabel}>Games</span><span style={styles.insightsStatValue}>{fmt(insights.off.gameAvg, insights.off.gameN)}</span></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HistoryItem({ week }) {
+  const [expanded, setExpanded] = useState(false);
+  const weekly = week.dailyLogs ? computeWeeklyTotals(week.dailyLogs, week.weekStart) : null;
+  const practiceAvg = weekly ? avg(weekly.practiceHS.map(e => e.value)) : null;
+  const gameAvg = weekly ? avg(weekly.gameHS.map(e => e.value)) : null;
+  const hasJournal = week.journal && week.journal.trim().length > 0;
+  const hasTags = week.tags && week.tags.length > 0;
+  const canExpand = hasJournal || hasTags;
+  return (
+    <div style={styles.historyItem}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: canExpand ? 'pointer' : 'default' }}
+        onClick={() => canExpand && setExpanded(!expanded)}>
+        <div style={{ flex: 1 }}>
+          <div style={styles.historyWeek}>
+            {formatWeekLabel(week.weekStart)}
+            {canExpand && <span style={{ color: '#6E7681', marginLeft: 8, fontSize: 10 }}>{expanded ? '▼' : '▶'}</span>}
+          </div>
+          {(practiceAvg !== null || gameAvg !== null) && (
+            <div style={styles.historyHS}>
+              {practiceAvg !== null && <span>P: {practiceAvg.toFixed(1)}%</span>}
+              {practiceAvg !== null && gameAvg !== null && <span style={{ color: '#484F58' }}> · </span>}
+              {gameAvg !== null && <span>G: {gameAvg.toFixed(1)}%</span>}
+            </div>
+          )}
+        </div>
+        <div style={styles.historyStatus}>
+          {week.hitStretch ? <span style={{ color: '#14E1A0' }}>● STRETCH</span>
+            : week.hitMinimum ? <span style={{ color: '#14E1A0' }}>● MIN HIT</span>
+            : <span style={{ color: '#FF4655' }}>○ MISSED</span>}
+        </div>
+      </div>
+      {expanded && canExpand && (
+        <div style={styles.historyExpanded}>
+          {hasTags && (
+            <div style={{ marginBottom: hasJournal ? 10 : 0 }}>
+              <div style={styles.historySectionLabel}>CONTEXT</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                {week.tags.map((t, i) => <div key={i} style={styles.historyTag}>{t}</div>)}
+              </div>
+            </div>
+          )}
+          {hasJournal && (
+            <div>
+              <div style={styles.historySectionLabel}>JOURNAL</div>
+              <div style={styles.historyJournal}>{week.journal}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ====================== STYLES ======================
+const styles = {
+  container: { background: '#0a0e14', minHeight: '100vh', color: '#E6EDF3', fontFamily: 'Rajdhani, sans-serif', padding: '20px 16px 40px', maxWidth: 520, margin: '0 auto', position: 'relative', overflow: 'hidden' },
+  scanlines: { position: 'fixed', inset: 0, pointerEvents: 'none', background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255, 255, 255, 0.015) 3px, rgba(255, 255, 255, 0.015) 4px)', zIndex: 1 },
+  celebration: { position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, #14E1A0, #0d9f73)', color: '#0a0e14', padding: '12px 20px', borderRadius: 4, fontFamily: 'Chakra Petch, sans-serif', fontWeight: 700, letterSpacing: '0.1em', fontSize: 13, zIndex: 101, display: 'flex', alignItems: 'center', boxShadow: '0 4px 24px rgba(20, 225, 160, 0.4)', animation: 'slideDown 0.4s ease-out' },
+  header: { marginBottom: 16, position: 'relative', zIndex: 2 },
+  titleRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
+  title: { fontFamily: 'Chakra Petch, sans-serif', fontSize: 28, fontWeight: 700, letterSpacing: '0.15em', color: '#E6EDF3', lineHeight: 1 },
+  subtitle: { fontFamily: 'Rajdhani, sans-serif', fontSize: 13, color: '#6E7681', marginTop: 4, letterSpacing: '0.05em' },
+  weekBadge: { fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#8B949E', background: '#161b22', padding: '6px 10px', border: '1px solid #21262d', borderRadius: 2, display: 'flex', alignItems: 'center', letterSpacing: '0.1em' },
+  menuButton: { background: '#161b22', color: '#8B949E', border: '1px solid #21262d', borderRadius: 2, padding: '0 10px', fontSize: 18, cursor: 'pointer', fontFamily: 'Chakra Petch' },
+  dataMenu: { position: 'absolute', top: 40, right: 0, background: '#0f1419', border: '1px solid #21262d', borderRadius: 4, padding: 4, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 2, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' },
+  dataMenuItem: { background: 'transparent', color: '#E6EDF3', border: 'none', padding: '10px 14px', fontFamily: 'Chakra Petch', fontSize: 11, fontWeight: 600, letterSpacing: '0.15em', cursor: 'pointer', textAlign: 'left', borderRadius: 2 },
+  daySelector: { background: '#0f1419', border: '1px solid #21262d', borderRadius: 4, padding: '10px 12px', marginBottom: 14, position: 'relative', zIndex: 2 },
+  dayNav: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  dayArrow: { background: 'transparent', border: 'none', color: '#E6EDF3', padding: '6px 4px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 3 },
+  dayLabel: { flex: 1, textAlign: 'center' },
+  dayLabelMain: { fontFamily: 'Chakra Petch, sans-serif', fontSize: 15, fontWeight: 600, letterSpacing: '0.15em', color: '#E6EDF3' },
+  todayBadge: { fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#14E1A0', letterSpacing: '0.15em', marginTop: 2 },
+  pastBadge: { fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#FFB86C', letterSpacing: '0.1em', marginTop: 2 },
+  dayDots: { display: 'flex', justifyContent: 'space-between', gap: 4, marginTop: 10, paddingTop: 8, borderTop: '1px solid #161b22' },
+  dayDot: { flex: 1, padding: '6px 2px', border: '1px solid', borderRadius: 2, fontFamily: 'Chakra Petch, sans-serif', fontSize: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 32, transition: 'all 0.15s ease' },
+  streakGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14, position: 'relative', zIndex: 2 },
+  streakCard: { background: '#0f1419', border: '1px solid #21262d', borderRadius: 4, padding: '14px 14px 12px', transition: 'all 0.3s ease' },
+  progressCard: { background: '#0f1419', border: '1px solid #21262d', borderRadius: 4, padding: 16, marginBottom: 14, position: 'relative', zIndex: 2 },
+  progressHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 },
+  progressLabel: { fontFamily: 'Chakra Petch, sans-serif', fontSize: 11, letterSpacing: '0.2em', color: '#8B949E', fontWeight: 600, marginBottom: 4 },
+  progressValue: { fontFamily: 'JetBrains Mono, monospace', fontSize: 36, fontWeight: 700, lineHeight: 1 },
+  progressStatus: { fontFamily: 'Chakra Petch, sans-serif', fontSize: 11, letterSpacing: '0.15em', fontWeight: 600, paddingBottom: 4 },
+  progressBar: { height: 6, background: '#161b22', borderRadius: 3, overflow: 'hidden', position: 'relative' },
+  progressFill: { height: '100%', transition: 'width 0.6s cubic-bezier(0.16, 1, 0.3, 1)', borderRadius: 3 },
+  categoryCard: { background: '#0f1419', border: '1px solid #21262d', borderLeft: '3px solid', borderRadius: 4, padding: '14px 16px', marginBottom: 12, position: 'relative', zIndex: 2 },
+  categoryHeader: { marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
+  categoryLabel: { fontFamily: 'Chakra Petch, sans-serif', fontSize: 12, fontWeight: 700, letterSpacing: '0.2em' },
+  categorySub: { fontFamily: 'Rajdhani, sans-serif', fontSize: 12, color: '#6E7681', marginTop: 2, letterSpacing: '0.03em' },
+  catStat: { textAlign: 'right' },
+  catStatLabel: { fontFamily: 'Chakra Petch, sans-serif', fontSize: 9, letterSpacing: '0.15em', color: '#6E7681', fontWeight: 600 },
+  catStatValue: { fontFamily: 'JetBrains Mono, monospace', fontSize: 22, fontWeight: 700, lineHeight: 1.1, marginTop: 2 },
+  catStatMeta: { fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#6E7681', marginTop: 2 },
+  ratingTally: { fontFamily: 'JetBrains Mono, monospace', fontSize: 16, fontWeight: 700, marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' },
+  itemRow: { padding: '10px 0', borderTop: '1px solid #161b22' },
+  itemTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
+  itemLabel: { fontFamily: 'Rajdhani, sans-serif', fontSize: 15, fontWeight: 500, color: '#E6EDF3', display: 'flex', alignItems: 'center' },
+  itemHint: { fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#6E7681', marginTop: 2, letterSpacing: '0.05em' },
+  itemCounter: { display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end' },
+  itemDayMarker: { fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#6E7681', marginTop: 2, letterSpacing: '0.05em' },
+  itemBarContainer: { height: 3, background: '#161b22', borderRadius: 2, position: 'relative', marginBottom: 10, overflow: 'visible' },
+  itemBar: { position: 'absolute', left: 0, top: 0, bottom: 0, transition: 'width 0.4s ease', borderRadius: 2 },
+  itemBarStretch: { position: 'absolute', left: 0, top: 0, bottom: 0, transition: 'width 0.4s ease', borderRadius: 2, opacity: 0.4 },
+  itemBarMarker: { position: 'absolute', top: -2, bottom: -2, width: 1, background: '#484F58' },
+  itemControls: { display: 'flex', gap: 8 },
+  controlButton: { border: '1px solid', borderRadius: 3, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontFamily: 'Chakra Petch, sans-serif', transition: 'all 0.15s ease' },
+  minusButton: { background: 'transparent', borderColor: '#21262d', color: '#6E7681', flex: '0 0 44px' },
+  plusButton: { flex: 1 },
+  tagList: { display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
+  tag: { display: 'inline-flex', alignItems: 'center', gap: 4, background: '#1a2330', border: '1px solid #21262d', color: '#E6EDF3', padding: '5px 4px 5px 10px', borderRadius: 3, fontFamily: 'Rajdhani, sans-serif', fontSize: 12, fontWeight: 500 },
+  tagRemove: { background: 'transparent', border: 'none', color: '#6E7681', padding: '2px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center' },
+  tagInputWrapper: { display: 'flex', gap: 4, flex: '1 0 100%', marginTop: 4 },
+  tagInput: { flex: 1, background: '#0a0e14', border: '1px solid #21262d', color: '#E6EDF3', padding: '6px 10px', borderRadius: 3, fontFamily: 'Rajdhani, sans-serif', fontSize: 13 },
+  tagAddConfirm: { background: 'rgba(20, 225, 160, 0.12)', border: '1px solid rgba(20, 225, 160, 0.4)', color: '#14E1A0', padding: '6px 12px', borderRadius: 3, fontFamily: 'Chakra Petch, sans-serif', fontWeight: 600, letterSpacing: '0.1em', fontSize: 11, cursor: 'pointer' },
+  addTagButton: { display: 'inline-flex', alignItems: 'center', background: 'transparent', border: '1px dashed #21262d', color: '#8B949E', padding: '5px 10px', borderRadius: 3, fontFamily: 'Chakra Petch, sans-serif', fontWeight: 600, letterSpacing: '0.1em', fontSize: 11, cursor: 'pointer' },
+  journalTextarea: { width: '100%', background: '#0a0e14', border: '1px solid #21262d', color: '#E6EDF3', padding: '10px 12px', borderRadius: 3, fontFamily: 'Rajdhani, sans-serif', fontSize: 14, lineHeight: 1.5, resize: 'vertical', minHeight: 80, fontWeight: 400 },
+  journalCount: { fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#484F58', textAlign: 'right', marginTop: 4, letterSpacing: '0.05em' },
+  modalBackdrop: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.7)', zIndex: 99, backdropFilter: 'blur(4px)', animation: 'fadeIn 0.2s ease-out' },
+  modal: { position: 'fixed', bottom: 0, left: 0, right: 0, background: '#0f1419', borderTop: '1px solid #21262d', borderRadius: '8px 8px 0 0', padding: '20px 20px calc(28px + env(safe-area-inset-bottom))', zIndex: 100, maxWidth: 520, margin: '0 auto', animation: 'slideUpModal 0.3s cubic-bezier(0.16, 1, 0.3, 1)' },
+  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalPrefix: { fontFamily: 'Chakra Petch, sans-serif', fontSize: 10, letterSpacing: '0.2em', color: '#14E1A0', fontWeight: 600 },
+  modalTitle: { fontFamily: 'Chakra Petch, sans-serif', fontSize: 22, fontWeight: 700, color: '#E6EDF3', letterSpacing: '0.05em', marginTop: 2 },
+  modalClose: { background: 'transparent', border: '1px solid #21262d', color: '#8B949E', width: 32, height: 32, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+  modalQuestion: { fontFamily: 'Rajdhani, sans-serif', fontSize: 16, color: '#8B949E', marginBottom: 12, fontWeight: 500 },
+  hsInputRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, background: '#0a0e14', border: '1px solid #21262d', borderRadius: 4, padding: '4px 14px' },
+  hsInput: { flex: 1, background: 'transparent', border: 'none', color: '#E6EDF3', padding: '14px 0', fontFamily: 'JetBrains Mono, monospace', fontSize: 28, fontWeight: 700 },
+  hsSuffix: { fontFamily: 'JetBrains Mono, monospace', fontSize: 20, color: '#6E7681', fontWeight: 500 },
+  modalButtons: { display: 'flex', gap: 8 },
+  skipButton: { flex: '0 0 90px', background: 'transparent', border: '1px solid #21262d', color: '#8B949E', padding: '12px', borderRadius: 3, fontFamily: 'Chakra Petch, sans-serif', fontWeight: 600, letterSpacing: '0.15em', fontSize: 12, cursor: 'pointer' },
+  skipButtonFull: { width: '100%', background: 'transparent', border: '1px solid #21262d', color: '#8B949E', padding: '12px', borderRadius: 3, fontFamily: 'Chakra Petch, sans-serif', fontWeight: 600, letterSpacing: '0.15em', fontSize: 12, cursor: 'pointer', marginTop: 12 },
+  submitButton: { flex: 1, background: 'rgba(20, 225, 160, 0.12)', border: '1px solid rgba(20, 225, 160, 0.4)', color: '#14E1A0', padding: '12px', borderRadius: 3, fontFamily: 'Chakra Petch, sans-serif', fontWeight: 700, letterSpacing: '0.15em', fontSize: 12, cursor: 'pointer' },
+  ratingButtons: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
+  ratingUpButton: { background: 'rgba(20, 225, 160, 0.1)', border: '1px solid rgba(20, 225, 160, 0.35)', color: '#14E1A0', padding: '20px', borderRadius: 4, fontFamily: 'Chakra Petch, sans-serif', fontWeight: 700, letterSpacing: '0.15em', fontSize: 13, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 },
+  ratingDownButton: { background: 'rgba(255, 70, 85, 0.08)', border: '1px solid rgba(255, 70, 85, 0.3)', color: '#FF4655', padding: '20px', borderRadius: 4, fontFamily: 'Chakra Petch, sans-serif', fontWeight: 700, letterSpacing: '0.15em', fontSize: 13, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 },
+  insightsCard: { background: '#0f1419', border: '1px solid #21262d', borderLeft: '3px solid #FFB86C', borderRadius: 4, padding: '14px 16px', marginBottom: 12, position: 'relative', zIndex: 2 },
+  insightsHeader: { display: 'flex', alignItems: 'center', gap: 8 },
+  insightsTitle: { fontFamily: 'Chakra Petch, sans-serif', fontSize: 12, fontWeight: 700, letterSpacing: '0.2em', color: '#FFB86C' },
+  insightsSub: { fontFamily: 'Rajdhani, sans-serif', fontSize: 12, color: '#6E7681', marginTop: 2, marginBottom: 14, letterSpacing: '0.03em' },
+  insightsGrid: { display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: 12 },
+  insightsDivider: { background: '#21262d', width: 1 },
+  insightsCol: { display: 'flex', flexDirection: 'column', gap: 6 },
+  insightsRowLabel: { fontFamily: 'Chakra Petch, sans-serif', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', marginBottom: 4 },
+  insightsStatRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' },
+  insightsStatLabel: { fontFamily: 'Rajdhani, sans-serif', fontSize: 12, color: '#8B949E' },
+  insightsStatValue: { fontFamily: 'JetBrains Mono, monospace', fontSize: 14, fontWeight: 700, color: '#E6EDF3' },
+  historyCard: { background: '#0f1419', border: '1px solid #21262d', borderRadius: 4, marginBottom: 18, position: 'relative', zIndex: 2 },
+  historyToggle: { width: '100%', background: 'transparent', border: 'none', color: '#8B949E', padding: '14px 16px', fontFamily: 'Chakra Petch, sans-serif', fontSize: 11, fontWeight: 600, letterSpacing: '0.15em', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  historyList: { padding: '0 16px 14px', borderTop: '1px solid #161b22' },
+  historyItem: { padding: '10px 0', borderBottom: '1px solid #161b22' },
+  historyWeek: { fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#8B949E', letterSpacing: '0.05em' },
+  historyHS: { fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#6E7681', marginTop: 3, letterSpacing: '0.03em' },
+  historyStatus: { fontFamily: 'Chakra Petch, sans-serif', fontSize: 10, fontWeight: 600, letterSpacing: '0.15em' },
+  historyExpanded: { marginTop: 10, paddingTop: 10, borderTop: '1px dashed #21262d' },
+  historySectionLabel: { fontFamily: 'Chakra Petch, sans-serif', fontSize: 9, color: '#6E7681', letterSpacing: '0.2em', fontWeight: 600 },
+  historyTag: { background: '#1a2330', border: '1px solid #21262d', color: '#8B949E', padding: '3px 8px', borderRadius: 2, fontFamily: 'Rajdhani', fontSize: 11 },
+  historyJournal: { fontFamily: 'Rajdhani, sans-serif', fontSize: 13, color: '#B0B8C1', lineHeight: 1.5, marginTop: 4, whiteSpace: 'pre-wrap' },
+  footer: { textAlign: 'center', color: '#484F58', fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.15em', padding: '20px 0 0', position: 'relative', zIndex: 2 },
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<RollaTracker />);
+  </script>
+</body>
+</html>
